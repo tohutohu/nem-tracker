@@ -1,10 +1,12 @@
 // PRIVATE_KEYを設定しています
 require('dotenv').config()
 const nem = require('nem-sdk').default
-let network, networkId;
 
-const testnet = true
-if (testnet) {
+const nameSpace = process.env.NAME_SPACE
+const mosaicName = process.env.MOSAIC_NAME
+
+let network, networkId;
+if (process.env.TEST_NET) {
   network = nem.model.nodes.defaultTestnet
   networkId = nem.model.network.data.testnet.id
 }else{
@@ -17,14 +19,19 @@ const connector = nem.com.websockets.connector.create(endpointSocket, '')
 const endpoint = nem.model.objects.create('endpoint')(network, nem.model.nodes.defaultPort)
 
 const common = nem.model.objects.create('common')('', process.env.PRIVATE_KEY)
-const trackerMosaic = nem.model.objects.create('mosaicAttachment')('tohu', 'tracker_mosaic', 1)
+const trackerMosaic = nem.model.objects.create('mosaicAttachment')(nameSpace, mosaicName, 1)
 let trackerMosaicDefinition
 
 connector.connect().then(() => {
-  nem.com.requests.namespace.mosaicDefinitions(endpoint, 'tohu')
+  nem.com.requests.namespace.mosaicDefinitions(endpoint, nameSpace)
     .then(res => {
       // 作成したモザイクの定義情報を取得します
-      trackerMosaicDefinition = res.data[0]
+      for (var mosaic in res.data) {
+        if(mosaic.mosaic.id.name === mosaicName) {
+          trackerMosaicDefinition = mosaic
+          break
+        }
+      }
     })
     .catch(err => {
       console.log(err)
@@ -56,7 +63,7 @@ connector.connect().then(() => {
         .then(data => {
           const mosaics = data.data
           mosaics.forEach(mosaic => {
-            if(mosaic.mosaicId.namespaceId === 'tohu' && mosaic.mosaicId.name === 'tracker_mosaic') {
+            if(mosaic.mosaicId.namespaceId === nameSpace && mosaic.mosaicId.name === mosaicName) {
               console.log('発見！！！！！')
               sendTrackerBadge(recipient)
             }
