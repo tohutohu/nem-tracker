@@ -34,18 +34,31 @@ connector.connect().then(() => {
     console.log('new block added! \nsignature: ' +  res.signature, '\n\n')
 
     res.transactions.forEach(transaction => {
-      if (transaction.amount === 0) {
+      const sender = nem.model.address.toAddress(transaction.signer, networkId)
+      let recipient;
+      if (transaction.type === 257) {
+        // 通常送金
+        recipient = transaction.recipient
+      }else if(transaction.type === 4100){
+        // マルチシグ
+        recipient = transaction.otherTrans.recipient
+      }else {
+        // 送金以外のときは終了する
         return
       }
 
-      const sender = nem.model.address.toAddress(transaction.signer, networkId)
+      if (transaction.amount === 0) {
+        // モザイクの送金は無視する
+        return
+      }
+
       nem.com.requests.account.mosaics.owned(endpoint, sender)
         .then(data => {
           const mosaics = data.data
           mosaics.forEach(mosaic => {
             if(mosaic.mosaicId.namespaceId === 'tohu' && mosaic.mosaicId.name === 'tracker_mosaic') {
               console.log('発見！！！！！')
-              sendTrackerBadge(transaction.recipient)
+              sendTrackerBadge(recipient)
             }
           })
         })
